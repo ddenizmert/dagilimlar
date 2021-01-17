@@ -1,0 +1,25 @@
+---
+title: "OLASILIK DAGILIMLARI"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## UYGULAMA
+
+Sürekli olasılık dağılımları için rassal veri üret, histogram, box plot, violin plot çizdir. Özet istatistik değerlerini kontrol et.
+
+```{r tabsets, echo=FALSE}
+shinyAppDir(
+  system.file("examples/12_yazilim", package = "shiny"),
+  options = list(
+    width = "100%", height = 800
+  )
+)
+```
+
+

@@ -1,7 +1,10 @@
 library(shiny)
 
 ui <- fluidPage(
+  
+  ## Butun dagilimlar icin sirayla numerik girisleri ekledik. Plot output ile daha sonra serverda istedigimiz grafikleri olusturmak uzere isimlendirme yaptık. br() fonksiyonu alttaki girislerle ustteki girislerin arasında bosluk birakmamızı saglar.
   ## Normal Distribution
+ 
   titlePanel("NORMAL DAGILIM"),
   numericInput(inputId = "size_norm",
                label = "Orneklem Genisligi (Normal Dagilim)",
@@ -197,9 +200,11 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   ## Normal Distribution
+  ##Asagidaki kod sayesinde olusturdugumuz grafiklere ekleyeceğim renkleri sectik. Renderplot fonksiyonuyla ust kısımda grafik icin yazdigimiz plotoutput'un icine yazdigimiz girisi cagirarak grafikleri olustururuz.
   library(RColorBrewer)
   cols <- brewer.pal(9, "Pastel1")
   cols
+  
   
   output$hist_norm <- renderPlot({
     title <- c(input$size_norm, "Orneklem Genisligi" , "Rassal Normal Degerler (Histogram)")

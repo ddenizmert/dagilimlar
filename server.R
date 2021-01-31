@@ -1,172 +1,293 @@
-library(vioplot)
 
-library(shiny)
-
-rt2 <- function(n = 1000, dft = 15) {
-  rt(n = n, df = dft) 
-}
-
-formals(rgamma)[1:2] <- c(1000, 1)
-
-rchisq2 <- function(n = 1000, dfx = 1) {
-  rchisq(n = n, df = dfx)
-}
-
-formals(rf)[1:3] <- c(1000, 1, 15)
-
-rexp2 <- function(n = 1000, rate2 = 1) {
-  rexp(n = n, rate = rate2)
-}
-
-formals(rbeta)[1:3] <- c(1000, 2, 2)
-
-rcauchy2<-function(n = 1000, location2 = 0, scale2 = 1) {
-  rcauchy(n = n, location = location2, scale = scale2)
-}
-
-rweibull2<-function(n = 1000, shape2 = 1, scale2 = 1) {
-  rweibull(n = n, shape = shape2, scale = scale2)
-}
-
-
-server <- shinyServer(function(input, output){
-  dat <- reactive({
-    dist <- switch(input$dist,
-                   norm = rnorm,
-                   unif = runif,
-                   t_dist = rt2,
-                   F_dist = rf,
-                   gam = rgamma,
-                   exp = rexp2,
-                   chisq = rchisq2,
-                   lnorm = rlnorm,
-                   beta = rbeta,
-                   cauchy = rcauchy2,
-                   weibull = rweibull2)
-    
-    def.args <- switch(input$dist,
-                       norm = c(input$mean, input$sd),
-                       unif = c(input$min, input$max),
-                       t_dist = c(input$dft),
-                       F_dist = c(input$df1, input$df2),
-                       gam = c(input$shape, input$rate),
-                       exp = c(input$rate2),
-                       chisq = c(input$dfx),
-                       lnorm = c(input$meanlog, input$sdlog),
-                       beta = c(input$shape1, input$shape2),
-                       cauchy = c(input$location2, input$scale2),
-                       weibull=c(input$shape2, input$scale2))
-    
-    f <- formals(dist);	f <- f[names(f)!="n"]; len <- min(length(f),3-1); f <- f[1:len]
-    argList <- list(n = input$n)
-    for(i in 1:len) argList[[names(f)[i]]] <- def.args[i]
-    return(list(do.call(dist, argList), names(f)))
+server <- function(input, output) {
+  ## Normal Distribution
+  ##Asagidaki kod sayesinde olusturdugumuz grafiklere ekleyeceğim renkleri sectik. Renderplot fonksiyonuyla ust kısımda grafik icin yazdigimiz plotoutput'un icine yazdigimiz girisi cagirarak grafikleri olustururuz.
+  library(RColorBrewer)
+  cols <- brewer.pal(9, "Pastel1")
+  cols
+  
+  
+  output$hist_norm <- renderPlot({
+    title <- c(input$size_norm, "Orneklem Genisligi" , "Rassal Normal Degerler (Histogram)")
+    hist(rnorm(input$size_norm, input$mean_norm, input$sd_norm), main = title, xlab = "Veriler", col = "#8C96C6")
   })
   
-  output$dist1 <- renderUI({
-    input$dist
-    isolate({
-      lab <- switch(input$dist,
-                    norm = "Ortalama:",
-                    unif = "Minimum:",
-                    t_dist = "Serbestlik Derecesi:",
-                    F_dist = "Ust Serbestlik Derecesi:",
-                    gam = "Sekil:",
-                    exp = "Oran:",
-                    chisq = "Serbestlik Derecesi:",
-                    lnorm = "Ortalama(log):",
-                    beta = "Alpha:",
-                    cauchy = "Konum" ,
-                    weibull = "Olcek")
-      
-      ini <- switch(input$dist,
-                    norm = 0,
-                    unif = 0, 
-                    t_dist = 15, 
-                    F_dist = 1, 
-                    gam = 1, 
-                    exp = 1, 
-                    chisq = 1, 
-                    lnorm = 0, 
-                    beta = 2,
-                    cauchy = 0, 
-                    weibull = 1)
-      numericInput(dat()[[2]][1], lab, ini)
-    })
+  output$box_norm <- renderPlot({
+    title <- c(input$size_norm, "Orneklem Genisligi" , "Rassal Normal Degerler (Box Plot)")
+    boxplot(rnorm(input$size_norm, input$mean_norm, input$sd_norm), main = title, xlab = "Veriler", col= "#35978F")
   })
   
-  output$dist2 <- renderUI({
-    input$dist
-    isolate({
-      lab <- switch(input$dist,
-                    norm = "Standart Sapma:",
-                    unif = "Maksimum:",
-                    F_dist = "Alt Serbestlik Derecesi:", 
-                    gam = "Oran:", 
-                    lnorm = "Standart Sapma(log):", 
-                    beta = "Beta:",
-                    cauchy = "Olcek:",
-                    weibull = "Sekil:")
-      ini <- switch(input$dist,
-                    norm = 1,
-                    unif = 1,
-                    F_dist = 15, 
-                    gam = 1, 
-                    lnorm = 1, 
-                    beta = 2,
-                    cauchy = 1,
-                    weibull = 1)
-      if(any(input$dist==c("norm", "unif", "F_dist", "gam", "lnorm", "beta", "cauchy", "weibull")))numericInput(dat()[[2]][2], lab, ini)
-    })
-  })
-  
-  
-  
-  
-  output$hist <- renderPlot({
-    dist <- input$dist
-    n <- input$n
-    hist(dat()[[1]], main = "HISTOGRAM GRAFIGI", xlab = "GOZLEMLER",
-         ylab = "FREKANS", col = "lightseagreen",
-         cex.axis = 1.2, cex.lab = 1.2, prob = T)
-    if(input$density) lines(density(dat()[[1]], adjust = input$bw), lwd = 2)
-  })
-  
-  
-  output$boxplot <- renderPlot({
-    dist <- input$dist
-    n <- input$n
-    boxplot(dat()[[1]],main = "KUTU GRAFIGI", ylab = "FREKANS", xlab = "GOZLEMLER", col = "palevioletred3")
-    if(input$density) lines(density(dat()[[1]], adjust = input$bw), lwd = 2)
-  }) 
   
   library(vioplot)
-  
-  output$vioplot <- renderPlot({
-    dist <- input$dist
-    n <- input$n
-    vioplot(dat()[[1]], main = "VIOLIN GRAFIGI", ylab = "FREKANS", xlab = "GOZLEMLER", col = "salmon2")
-    if(input$density) lines(density(dat()[[1]], adjust = input$bw), lwd = 2)
-  }) 
-  
+  output$violin_norm <- renderPlot({
+    title <- c(input$size_norm, "Orneklem Genisligi" , "Rassal Normal Degerler (Violin Plot)")
+    vioplot(rnorm(input$size_norm, input$mean_norm, input$sd_norm), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
   
   library(qualityTools)
-  output$dotplot <- renderPlot({
-    dist <- input$dist
-    n <- input$n
-    dotPlot(dat()[[1]], main = "DOT PLOT", ylab = "FREKANS", xlab = "GOZLEMLER", col = "green")
-    if(input$density) lines(density(dat()[[1]], adjust = input$bw), lwd = 2)
-  }) 
-  
-  
-  output$summary <- renderPrint({
-    summary(dat()[[1]])
-  })
-  
-  output$table <- renderTable({
-    data.frame(x = dat()[[1]])
-  })
-  
-  
-  
+output$dot_norm <- renderPlot({ 
+  title <- c(input$size_norm, "Orneklem Genisligi" , "Rassal Normal Degerler (Dot Plot)")
+  dotPlot(rnorm(input$size_norm, input$mean_norm, input$sd_norm), main = title, xlab = "Veriler",col = "#4D004B")
 })
+  
+  output$summary_norm <- renderPrint({
+    summary(rnorm(input$size_norm, input$mean_norm, input$sd_norm))
+  })
+  
+  ## Uniform Distribution
+  output$hist_unif <- renderPlot({
+    title <- c(input$size_unif, "Orneklem Genisligi" , "Rassal Tekduze Degerler (Histogram)")
+    hist(runif(input$size_unif, input$min_unif, input$max_unif), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_unif <- renderPlot({
+    title <- c(input$size_unif, "Orneklem Genisligi" , "Rassal Tekduze Degerler (Box Plot)")
+    boxplot(runif(input$size_unif, input$min_unif, input$max_unif), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  
+  output$violin_unif <- renderPlot({
+    title <- c(input$size_unif, "Orneklem Genisligi" , "Rassal Tekduze Degerler (Violin Plot)")
+    vioplot(runif(input$size_unif, input$min_unif, input$max_unif), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  output$dot_unif <- renderPlot({ 
+    title <- c(input$size_unif, "Orneklem Genisligi" , "Rassal Tekduze Degerler (Dot Plot)")
+    dotPlot(runif(input$size_unif, input$min_unif, input$max_unif), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  
+  output$summary_unif <- renderPrint({
+    summary(runif(input$size_unif, input$min_unif, input$max_unif))
+  })
+  
+  ## T Distribution
+  output$hist_t <- renderPlot({
+    title <- c(input$size_t, "Orneklem Genisligi" , "Rassal T Degerler (Histogram)")
+    hist(rt(input$size_t, input$df_t), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_t <- renderPlot({
+    title <- c(input$size_t, "Orneklem Genisligi" , "Rassal T Degerler (Box Plot)")
+    boxplot(rt(input$size_t, input$df_t), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  
+  output$violin_t <- renderPlot({
+    title <- c(input$size_t, "Orneklem Genisligi" , "Rassal T Degerler (Violin Plot)", col= "#FBB4AE")
+    vioplot(rt(input$size_t, input$df_t), main = title, xlab = "Veriler")
+  })
+  
+  
+  output$dot_t <- renderPlot({ 
+    title <- c(input$size_t, "Orneklem Genisligi" , "Rassal T Degerler (Dot Plot)")
+    dotPlot(rt(input$size_t, input$df_t), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  
+  
+  output$summary_t <- renderPrint({
+    summary(rt(input$size_t, input$df_t))
+  })
+  
+  ## F Distribution
+  output$hist_f <- renderPlot({
+    title <- c(input$size_f, "Orneklem Genisligi" , "Rassal F Degerler (Histogram)")
+    hist(rf(input$size_f, input$df_f_1, input$df_f_2), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_f <- renderPlot({
+    title <- c(input$size_f, "Orneklem Genisligi" , "Rassal F Degerler (Box Plot)")
+    boxplot(rf(input$size_f, input$df_f_1, input$df_f_2), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  output$violin_f <- renderPlot({
+    title <- c(input$size_f, "Orneklem Genisligi" , "Rassal F Degerler (Violin Plot)")
+    vioplot(rf(input$size_f, input$df_f_1,input$df_f_2), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  
+  output$dot_f <- renderPlot({ 
+    title <- c(input$size_f, "Orneklem Genisligi" , "Rassal F Degerler (Dot Plot)")
+    dotPlot(rf(input$size_f, input$df_f_1,input$df_f_2), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  
+  output$summary_f <- renderPrint({
+    summary(rf(input$size_f, input$df_f_1,input$df_f_2))
+  })
+  
+  ## Gamma Distribution
+  output$hist_gamma <- renderPlot({
+    title <- c(input$size_gamma, "Orneklem Genisligi" , "Rassal Gamma Degerler (Histogram)")
+    hist(rgamma(input$size_gamma, input$shape_gamma, input$rate_gamma), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_gamma <- renderPlot({
+    title <- c(input$size_gamma, "Orneklem Genisligi" , "Rassal Gamma Degerler (Box Plot)")
+    boxplot(rgamma(input$size_gamma, input$shape_gamma, input$rate_gamma), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  output$violin_gamma <- renderPlot({
+    title <- c(input$size_gamma, "Orneklem Genisligi" , "Rassal Gamma Degerler (Violin Plot)")
+    vioplot(rgamma(input$size_gamma, input$shape_gamma, input$rate_gamma), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  
+  output$dot_gamma <- renderPlot({ 
+    title <- c(input$size_gamma, "Orneklem Genisligi" , "Rassal Gamma Degerler (Dot Plot)")
+    dotPlot(rgamma(input$size_gamma, input$shape_gamma, input$rate_gamma), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  
+  output$summary_gamma <- renderPrint({
+    summary(rgamma(input$size_gamma, input$shape_gamma, input$rate_gamma))
+  })
+  
+  ## Exponential Distribution
+  output$hist_exp <- renderPlot({
+    title <- c(input$size_exp, "Orneklem Genisligi" , "Rassal Ustel Degerler (Histogram)")
+    hist(rexp(input$size_exp, input$rate_exp), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_exp <- renderPlot({
+    title <- c(input$size_exp, "Orneklem Genisligi" , "Rassal Ustel Degerler (Box Plot)")
+    boxplot(rexp(input$size_exp, input$rate_exp), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  output$violin_exp <- renderPlot({
+    title <- c(input$size_exp, "Orneklem Genisligi" , "Rassal Ustel Degerler (Violin Plot)")
+    vioplot(rexp(input$size_exp, input$rate_exp), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  
+  output$dot_exp <- renderPlot({ 
+    title <- c(input$size_exp, "Orneklem Genisligi" , "Rassal Ustel Degerler (Dot Plot)")
+    dotPlot(rexp(input$size_exp, input$rate_exp), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  
+  output$summary_exp <- renderPrint({
+    summary(rexp(input$size_exp, input$rate_exp))
+  })
+  ## Chi - Square Distribution
+  output$hist_chi <- renderPlot({
+    title <- c(input$size_chi, "Orneklem Genisligi" , "Rassal Ki - Kare Degerler (Histogram)")
+    hist(rchisq(input$size_chi, input$df_chi), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_chi <- renderPlot({
+    title <- c(input$size_chi, "Orneklem Genisligi" , "Rassal Ki - Kare Degerler (Box Plot)")
+    boxplot(rchisq(input$size_chi, input$df_chi), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  output$violin_chi <- renderPlot({
+    title <- c(input$size_chi, "Orneklem Genisligi" , "Rassal Ki - Kare Degerler (Violin Plot)")
+    vioplot(rchisq(input$size_chi, input$df_chi), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  
+  output$dot_chi <- renderPlot({ 
+    title <- c(input$size_chi, "Orneklem Genisligi" , "Rassal Ki - Degerler (Dot Plot)")
+    dotPlot(rchisq(input$size_chi, input$df_chi), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  output$summary_chi <- renderPrint({
+    summary(rchisq(input$size_chi, input$df_chi))
+  })
+  ## Log Normal Distribution
+  output$hist_log <- renderPlot({
+    title <- c(input$size_log, "Orneklem Genisligi" , "Rassal Log Normal Degerler (Histogram)")
+    hist(rlnorm(input$size_log, input$mean_log, input$sd_log), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_log <- renderPlot({
+    title <- c(input$size_log, "Orneklem Genisligi" , "Rassal Log Normal Degerler (Box Plot)")
+    boxplot(rlnorm(input$size_log, input$mean_log, input$sd_log), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  output$violin_log <- renderPlot({
+    title <- c(input$size_log, "Orneklem Genisligi" , "Rassal Log Normal Degerler (Violin Plot)")
+    vioplot(rlnorm(input$size_log, input$mean_log, input$sd_log), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  
+  output$dot_log <- renderPlot({ 
+    title <- c(input$size_log, "Orneklem Genisligi" , "Rassal Log Degerler (Dot Plot)")
+    dotPlot(rlnorm(input$size_log, input$mean_log, input$sd_log), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  output$summary_log <- renderPrint({
+    summary(rlnorm(input$size_log, input$mean_log, input$sd_log))
+  })
+  
+  ## Beta Distribution
+  output$hist_beta <- renderPlot({
+    title <- c(input$size_beta, "Orneklem Genisligi" , "Rassal Beta Degerler (Histogram)")
+    hist(rbeta(input$size_beta, input$shape_beta_1, input$shape_beta_2), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_beta <- renderPlot({
+    title <- c(input$size_beta, "Orneklem Genisligi" , "Rassal Beta Degerler (Box Plot)")
+    boxplot(rbeta(input$size_beta, input$shape_beta_1, input$shape_beta_2), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  output$violin_beta <- renderPlot({
+    title <- c(input$size_exp, "Orneklem Genisligi" , "Rassal Beta Degerler (Violin Plot)")
+    vioplot(rbeta(input$size_beta, input$shape_beta_1, input$shape_beta_2), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  output$dot_beta <- renderPlot({ 
+    title <- c(input$size_beta, "Orneklem Genisligi" , "Rassal Beta Degerler (Dot Plot)")
+    dotPlot(rbeta(input$size_beta, input$shape_beta_1, input$shape_beta_2), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  output$summary_beta <- renderPrint({
+    summary(rbeta(input$size_beta, input$shape_beta_1, input$shape_beta_2))
+  })
+  
+  ## Cauchy Distribution
+  output$hist_cauchy <- renderPlot({
+    title <- c(input$size_cauchy, "Orneklem Genisligi" , "Rassal Cauchy Degerler (Histogram)")
+    hist(rcauchy(input$size_cauchy, input$location_cauchy, input$scale_cauchy), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_cauchy <- renderPlot({
+    title <- c(input$size_cauchy, "Orneklem Genisligi" , "Rassal Cauchy Degerler (Box Plot)")
+    boxplot(rcauchy(input$size_cauchy, input$location_cauchy, input$scale_cauchy), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  
+  output$violin_cauchy <- renderPlot({
+    title <- c(input$size_cauchy, "Orneklem Genisligi" , "Rassal Cauchy Degerler (Violin Plot)")
+    vioplot(rcauchy(input$size_cauchy, input$location_cauchy, input$scale_cauchy), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  
+  output$dot_cauchy <- renderPlot({ 
+    title <- c(input$size_cauchy, "Orneklem Genisligi" , "Rassal Cauchy Degerler (Dot Plot)")
+    dotPlot(rcauchy(input$size_cauchy, input$location_cauchy, input$scale_cauchy), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  output$summary_cauchy <- renderPrint({
+    summary(rcauchy(input$size_cauchy, input$location_cauchy, input$scale_cauchy))
+  })
+  
+  ## Weibull Distribution
+  output$hist_weibull <- renderPlot({
+    title <- c(input$size_weibull, "Orneklem Genisligi" , "Rassal Weibull Degerler (Histogram)")
+    hist(rweibull(input$size_weibull, input$shape_weibull, input$scale_weibull), main = title, xlab = "Veriler", col = "#8C96C6")
+  })
+  
+  output$box_weibull <- renderPlot({
+    title <- c(input$size_weibull, "Orneklem Genisligi" , "Rassal Weibull Degerler (Box Plot)")
+    boxplot(rweibull(input$size_weibull, input$shape_weibull, input$scale_weibull), main = title, xlab = "Veriler", col= "#35978F")
+  })
+  
+  output$violin_weibull <- renderPlot({
+    title <- c(input$size_cauchy, "Orneklem Genisligi" , "Rassal Weibull Degerler (Violin Plot)")
+    vioplot(rweibull(input$size_weibull, input$shape_weibull, input$scale_weibull), main = title, xlab = "Veriler", col= "#FBB4AE")
+  })
+  output$dot_weibull <- renderPlot({ 
+    title <- c(input$size_cauchy, "Orneklem Genisligi" , "Rassal Cauchy Degerler (Dot Plot)")
+    dotPlot(rweibull(input$size_weibull, input$shape_weibull, input$scale_weibull), main = title, xlab = "Veriler",col = "#4D004B")
+  })
+  
+  output$summary_weibull <- renderPrint({
+    summary(rweibull(input$size_weibull, input$shape_weibull, input$scale_weibull))
+  })
+  
+  
+  
+  
+}

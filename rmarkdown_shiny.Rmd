@@ -1,5 +1,5 @@
 ---
-title: "OLASILIK DAGILIMLARI"
+title: "Odev"
 output: html_document
 runtime: shiny
 ---
@@ -9,17 +9,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-## UYGULAMA
-
-Sürekli olasılık dağılımları için rassal veri üret, histogram, box plot, violin plot çizdir. Özet istatistik değerlerini kontrol et.
 
 ```{r tabsets, echo=FALSE}
 shinyAppDir(
-  system.file("examples/12_yazilim", package = "shiny"),
+  system.file("examples/12_odev", package = "shiny"),
   options = list(
-    width = "100%", height = 800
+    width = "100%", height = 550
   )
 )
 ```
+
+
+
 
 
